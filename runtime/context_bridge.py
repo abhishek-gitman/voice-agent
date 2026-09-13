@@ -4,195 +4,221 @@
 
 import asyncio
 from pipecat.frames.frames import (
+    AggregatedTextFrame,
     Frame,
     InterruptionFrame,
+    InterruptionTaskFrame,
     LLMContextFrame,
     LLMFullResponseEndFrame,
-    LLMTextFrame,
     TranscriptionFrame,
+    TTSStartedFrame,
+    VADUserStartedSpeakingFrame,
+    VADUserStoppedSpeakingFrame,
 )
 from pipecat.processors.aggregators.llm_context import LLMContext
 from pipecat.processors.frame_processor import FrameDirection, FrameProcessor
+from runtime.playback_state import PlaybackState, is_likely_echo
 from runtime.session import CallSession
 
 
 # ============================================================
 # STT TO LLM BRIDGE
-# Converts final STT transcriptions into LLMContextFrame.
-# Maintains conversation history via CallSession.
-# Handles delayed responses, cancellation, and text buffering.
 # ============================================================
 
 class STTToLLMBridge(FrameProcessor):
 
-    # -------------------------
-    # Initialization
-    # -------------------------
-    def __init__(self, session: CallSession, system_prompt: str, **kwargs):
+    def __init__(
+        self,
+        session: CallSession,
+        system_prompt: str,
+        playback: PlaybackState,
+        *,
+        finalize_wait_secs: float = 0.45,
+        llm_reply_delay_secs: float = 0.6,
+        min_user_chars: int = 3,
+        **kwargs,
+    ):
         super().__init__(**kwargs)
         self._session = session
         self._system_prompt = system_prompt
-        self._pending_response = False
-        self._buffered_text = ""
-        self._response_task = None  # tracks the current delayed response task
-        print("✅ STTToLLMBridge initialized")
+        self._playback = playback
+        self._finalize_wait_secs = finalize_wait_secs
+        self._llm_reply_delay_secs = llm_reply_delay_secs
+        self._min_user_chars = min_user_chars
 
-    # -------------------------
-    # Save Assistant Message
-    # Called by ResponseCapture after LLM finishes responding.
-    # Clears any stale buffer — does NOT trigger new LLM call.
-    # -------------------------
+        self._utterance_buffer = ""
+        self._commit_task: asyncio.Task | None = None
+        self._llm_task: asyncio.Task | None = None
+        self._llm_busy = False
+
+        print("✅ STTToLLMBridge initialized (speakerphone-safe turn-taking)")
+
     def add_assistant_message(self, text: str, direction=None):
         if text.strip():
             self._session.add_message("agent", text.strip())
-            self._pending_response = False
+            self._playback.set_last_agent_text(text.strip())
+            self._llm_busy = False
+            self._try_drain_pending_turn(direction)
 
-            # Clear any stale buffer after agent responds
-            if self._buffered_text.strip():
-                print(f"🗑️  Cleared stale buffer: {self._buffered_text.strip()}")
-                self._buffered_text = ""
+    def _try_drain_pending_turn(self, direction: FrameDirection | None) -> None:
+        if self._llm_busy or self._playback.is_listen_muted():
+            return
+        pending = self._playback.pop_pending_user_turn()
+        if pending:
+            print(f"📨 Processing queued user turn: {pending}")
+            self._llm_task = asyncio.create_task(
+                self._respond_to_user(pending, direction or FrameDirection.DOWNSTREAM)
+            )
 
-    # -------------------------
-    # Delayed LLM Response
-    # Waits before responding — cancellable if user speaks again.
-    # Smart delay based on punctuation at end of sentence.
-    # -------------------------
-    async def _delayed_response(self, user_text: str, direction: FrameDirection):
+    def _merge_transcript(self, new_text: str) -> None:
+        new_text = new_text.strip()
+        if not new_text:
+            return
+        if not self._utterance_buffer:
+            self._utterance_buffer = new_text
+            return
+        if new_text.startswith(self._utterance_buffer) or len(new_text) >= len(
+            self._utterance_buffer
+        ):
+            self._utterance_buffer = new_text
+        else:
+            self._utterance_buffer = f"{self._utterance_buffer} {new_text}".strip()
+
+    def _cancel_pending_tasks(self) -> None:
+        if self._commit_task and not self._commit_task.done():
+            self._commit_task.cancel()
+        self._commit_task = None
+        if self._llm_task and not self._llm_task.done():
+            self._llm_task.cancel()
+        self._llm_task = None
+
+    async def _interrupt_agent(self) -> None:
+        await self.push_frame(InterruptionTaskFrame(), FrameDirection.UPSTREAM)
+
+    async def _commit_user_turn(self, direction: FrameDirection) -> None:
         try:
-            last_char = user_text.rstrip()[-1] if user_text.rstrip() else ""
+            await asyncio.sleep(self._finalize_wait_secs)
+            if self._playback.is_listen_muted():
+                return
 
-            if last_char in ".?!":
-                wait = 1.0   # sentence complete — respond faster
-            elif last_char in ",":
-                wait = 2.5   # mid-sentence — wait longer
-            else:
-                wait = 1.8   # default
+            text = self._utterance_buffer.strip()
+            self._utterance_buffer = ""
+            if len(text) < self._min_user_chars:
+                print(f"🔇 Ignored short fragment ({len(text)} chars): '{text}'")
+                return
+            if is_likely_echo(text, self._playback.last_agent_text):
+                print(f"🔇 Ignored echo turn: '{text}'")
+                return
 
-            await asyncio.sleep(wait)
+            print(f"\n🎙️  User (full turn): {text}")
 
-            # Cancel any queued TTS before new response
-            await self.push_frame(InterruptionFrame(), direction)
+            if self._llm_busy or self._playback.is_listen_muted():
+                self._playback.queue_user_turn(text)
+                print("📝 Queued — agent still speaking")
+                return
 
-            # Send full conversation history to LLM
+            self._llm_task = asyncio.create_task(
+                self._respond_to_user(text, direction)
+            )
+            await self._llm_task
+
+        except asyncio.CancelledError:
+            pass
+
+    async def _respond_to_user(self, text: str, direction: FrameDirection) -> None:
+        try:
+            self._session.add_message("user", text)
+            self._llm_busy = True
+            await asyncio.sleep(self._llm_reply_delay_secs)
+
             context = LLMContext(
                 messages=self._session.get_llm_messages(self._system_prompt)
             )
             await self.push_frame(LLMContextFrame(context=context), direction)
-
         except asyncio.CancelledError:
-            print("⏭️  Response cancelled — user spoke again")
-            self._pending_response = False
+            print("⏭️  LLM response cancelled — user spoke again")
+            self._llm_busy = False
 
-    # -------------------------
-    # Frame Processing
-    # Core logic — handles each incoming TranscriptionFrame from STT
-    # -------------------------
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
-        if isinstance(frame, TranscriptionFrame) and frame.text:
-            user_text = frame.text.strip()
-
-            # Skip empty frames
-            if not user_text:
+        if isinstance(frame, VADUserStartedSpeakingFrame):
+            if self._playback.is_listen_muted():
                 await self.push_frame(frame, direction)
                 return
-
-            # -------------------------
-            # Filler Word Filter (disabled — smart delay handles this now)
-            # Uncomment to re-enable hard filtering in future
-            # -------------------------
-            # filler_words = {
-            #     "so", "yeah", "mhmm", "uh-huh", "and",
-            #     "um", "uh", "hmm", "so basically", "like",
-            #     "uh huh", "mm", "mmm"
-            # }
-            # if user_text.lower().rstrip(".,!?") in filler_words:
-            #     print(f"🔇 Ignored filler: {user_text}")
-            #     return
-
-            # -------------------------
-            # Cancel any pending delayed response (user still speaking)
-            # -------------------------
-            if self._response_task and not self._response_task.done():
-                self._response_task.cancel()
-                print(f"🛑 Cancelled pending response — user still speaking")
-
-            # -------------------------
-            # Buffer text if LLM is currently processing a response
-            # -------------------------
-            if self._pending_response:
-                self._buffered_text += " " + user_text
-                print(f"📝 Buffered (LLM busy): {user_text}")
-                await self.push_frame(frame, direction)
-                return
-
-            # -------------------------
-            # Merge buffered fragments with current text into one message
-            # Prevents garbage fragments from polluting the context
-            # -------------------------
-            if self._buffered_text.strip():
-                full_text = (self._buffered_text.strip() + " " + user_text).strip()
-                self._buffered_text = ""
-                print(f"\n🎙️  User: {full_text}")
-                self._session.add_message("user", full_text)
-            else:
-                # -------------------------
-                # No buffer — add current text directly to session
-                # -------------------------
-                print(f"\n🎙️  User: {user_text}")
-                self._session.add_message("user", user_text)
-
-            self._pending_response = True
-            self._response_task = asyncio.create_task(
-                self._delayed_response(user_text, direction)
-            )
-
-        else:
+            self._cancel_pending_tasks()
             await self.push_frame(frame, direction)
+            return
+
+        if isinstance(frame, VADUserStoppedSpeakingFrame):
+            if self._playback.is_listen_muted():
+                await self.push_frame(frame, direction)
+                return
+            self._cancel_pending_tasks()
+            self._commit_task = asyncio.create_task(
+                self._commit_user_turn(direction)
+            )
+            await self.push_frame(frame, direction)
+            return
+
+        if isinstance(frame, TranscriptionFrame) and frame.text:
+            if self._playback.is_listen_muted():
+                await self.push_frame(frame, direction)
+                return
+            self._merge_transcript(frame.text.strip())
+            # Real barge-in: user speech with words while agent talks (after unmute fails)
+            if (
+                self._playback.agent_playing
+                and self._utterance_buffer.strip()
+                and not is_likely_echo(
+                    self._utterance_buffer, self._playback.last_agent_text
+                )
+            ):
+                await self._interrupt_agent()
+            await self.push_frame(frame, direction)
+            return
+
+        await self.push_frame(frame, direction)
 
 
 # ============================================================
 # RESPONSE CAPTURE
-# Sits after LLM aggregator in pipeline.
-# Accumulates LLM text chunks and saves completed replies.
-# No silence filter — prompt handles conversation quality.
 # ============================================================
 
 class ResponseCapture(FrameProcessor):
 
-    # -------------------------
-    # Initialization
-    # -------------------------
-    def __init__(self, bridge: STTToLLMBridge, **kwargs):
+    def __init__(self, bridge: STTToLLMBridge, playback: PlaybackState, **kwargs):
         super().__init__(**kwargs)
         self._bridge = bridge
-        self._buffer = ""
+        self._playback = playback
+        self._turn_text = ""
         print("✅ ResponseCapture initialized")
 
-    # -------------------------
-    # Frame Processing
-    # Pushes LLM chunks to TTS immediately, saves on completion
-    # -------------------------
     async def process_frame(self, frame: Frame, direction: FrameDirection):
         await super().process_frame(frame, direction)
 
-        # -------------------------
-        # Accumulate LLM text chunks — push to TTS immediately
-        # -------------------------
-        if isinstance(frame, LLMTextFrame) and frame.text:
-            self._buffer += frame.text
+        if isinstance(frame, InterruptionFrame):
+            self._turn_text = ""
             await self.push_frame(frame, direction)
+            return
 
-        # -------------------------
-        # LLM finished — save full reply to session via bridge
-        # -------------------------
-        elif isinstance(frame, LLMFullResponseEndFrame):
-            if self._buffer.strip():
-                print(f"🤖 Priya: {self._buffer.strip()}")
-                self._bridge.add_assistant_message(self._buffer, direction)
-            self._buffer = ""
+        if isinstance(frame, AggregatedTextFrame) and frame.text:
+            self._turn_text += frame.text
             await self.push_frame(frame, direction)
+            return
 
-        else:
+        if isinstance(frame, TTSStartedFrame):
+            self._playback.on_bot_started_speaking()
             await self.push_frame(frame, direction)
+            return
+
+        if isinstance(frame, LLMFullResponseEndFrame):
+            full = self._turn_text.strip()
+            self._turn_text = ""
+            if full:
+                print(f"🤖 Priya: {full}")
+                self._bridge.add_assistant_message(full, direction)
+            await self.push_frame(frame, direction)
+            return
+
+        await self.push_frame(frame, direction)

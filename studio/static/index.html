@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SuperVoice Studio</title>
+  <link rel="stylesheet" href="/static/studio.css" />
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar card">
+      <div class="brand">SuperVoice</div>
+      <p class="brand-sub">Agent Studio</p>
+      <nav>
+        <button type="button" class="nav active" data-panel="panel-control">Control</button>
+        <button type="button" class="nav" data-panel="panel-setup">Setup</button>
+        <button type="button" class="nav" data-panel="panel-settings">Settings</button>
+        <button type="button" class="nav" data-panel="panel-prompt">Prompt</button>
+        <button type="button" class="nav" data-panel="panel-session">Session</button>
+      </nav>
+      <p class="sidebar-foot">Mac local demo · mic + speakers</p>
+    </aside>
+
+    <main>
+      <header>
+        <h1>Voice agent console</h1>
+        <p>Configure Priya, start a test call, and read logs — no Terminal needed for daily use.</p>
+      </header>
+
+      <!-- CONTROL -->
+      <section id="panel-control" class="panel active">
+        <div class="card control-bar">
+          <div class="row">
+            <span id="status-pill" class="pill idle">Stopped</span>
+            <span id="status-pid" class="meta"></span>
+          </div>
+          <div class="row actions">
+            <button type="button" id="btn-start" class="primary">▶ Start test call</button>
+            <button type="button" id="btn-stop" class="danger">■ Stop</button>
+            <button type="button" id="btn-restart">↻ Restart with saved settings</button>
+            <button type="button" id="btn-save">Save settings</button>
+          </div>
+          <p id="status-msg" class="hint"></p>
+        </div>
+        <div class="card steps">
+          <h2>Quick flow</h2>
+          <ol>
+            <li>Open <strong>Setup</strong> — all checks green.</li>
+            <li>Tune <strong>Settings</strong> / <strong>Prompt</strong>, click <strong>Save</strong>.</li>
+            <li>Click <strong>Start test call</strong> and allow microphone access.</li>
+            <li>Speak after Priya finishes each line (loudspeaker mode uses echo guard).</li>
+            <li>Click <strong>Stop</strong> when done; see <strong>Session</strong> for transcript.</li>
+          </ol>
+        </div>
+      </section>
+
+      <!-- SETUP -->
+      <section id="panel-setup" class="panel">
+        <div class="card">
+          <div class="row spread">
+            <h2>Setup checklist</h2>
+            <button type="button" id="btn-refresh-preflight">Refresh</button>
+          </div>
+          <ul id="preflight-list" class="checklist"></ul>
+          <p class="hint">Studio only runs the dashboard. The voice agent runs as a background process on your Mac when you press Start.</p>
+        </div>
+      </section>
+
+      <!-- SETTINGS -->
+      <section id="panel-settings" class="panel">
+        <div class="grid">
+          <div class="card" id="fields-identity"></div>
+          <div class="card" id="fields-models"></div>
+          <div class="card" id="fields-vad"></div>
+          <div class="card" id="fields-turn"></div>
+        </div>
+      </section>
+
+      <!-- PROMPT -->
+      <section id="panel-prompt" class="panel">
+        <div class="card full">
+          <h2>System prompt</h2>
+          <p class="hint">Leave empty to use the default Priya sales prompt from code.</p>
+          <textarea id="system_prompt" rows="18" placeholder="You are Priya..."></textarea>
+        </div>
+      </section>
+
+      <!-- SESSION -->
+      <section id="panel-session" class="panel">
+        <div class="grid session-grid">
+          <div class="card">
+            <h2>Live transcript</h2>
+            <div id="transcript" class="transcript"></div>
+          </div>
+          <div class="card">
+            <div class="row spread">
+              <h2>Technical logs</h2>
+              <button type="button" id="btn-clear-logs">Clear view</button>
+            </div>
+            <pre id="logs"></pre>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/studio.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# SuperVoice local voice agent (runtime/bot.py)
+# [local] includes PyAudio for Mac mic/speaker (also: brew install portaudio)
+pipecat-ai[local]==1.3.0
+deepgram-sdk==7.2.0
+google-genai==1.75.0
+google-cloud-speech==2.39.0
+google-cloud-texttospeech==2.36.0
+python-dotenv==1.2.2
+aiohttp==3.13.5
+onnxruntime==1.24.4
+numpy==2.4.6
+openai==2.38.0
+fastapi==0.115.6
+uvicorn[standard]==0.34.0

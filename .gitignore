@@ -30,3 +30,6 @@ dist/
 
 # Runtime cache
 .cache/
+
+# Local studio overrides (optional — default config is committed)
+# config/agent_runtime.local.json
