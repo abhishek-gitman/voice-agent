@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>SuperVoice PRD v1.2 — Visual Overview</title>
+  <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --surface: #1a2332;
+      --surface2: #243044;
+      --text: #e8edf4;
+      --muted: #94a3b8;
+      --accent: #3b82f6;
+      --accent2: #22c55e;
+      --phase1: #f59e0b;
+      --phase2: #8b5cf6;
+      --border: #334155;
+      --font: "Segoe UI", system-ui, -apple-system, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      font-size: 16px;
+    }
+    .layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      min-height: 100vh;
+    }
+    @media (max-width: 900px) {
+      .layout { grid-template-columns: 1fr; }
+      nav.sidebar { position: relative; height: auto; }
+    }
+    nav.sidebar {
+      position: sticky;
+      top: 0;
+      height: 100vh;
+      overflow-y: auto;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 1.25rem 1rem;
+    }
+    nav.sidebar h2 {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin: 0 0 0.75rem;
+    }
+    nav.sidebar a {
+      display: block;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 0.35rem 0.5rem;
+      border-radius: 6px;
+      font-size: 0.9rem;
+    }
+    nav.sidebar a:hover { background: var(--surface2); color: var(--text); }
+    main {
+      padding: 2rem 2.5rem 4rem;
+      max-width: 1100px;
+    }
+    .hero {
+      background: linear-gradient(135deg, #1e3a5f 0%, #0f1419 60%);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2rem 2.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .hero h1 { margin: 0 0 0.5rem; font-size: 2rem; font-weight: 700; }
+    .hero .tagline { color: var(--muted); font-size: 1.1rem; max-width: 52ch; }
+    .meta-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      margin-top: 1.5rem;
+    }
+    .pill {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.8rem;
+    }
+    .pill.phase1 { border-color: var(--phase1); color: #fcd34d; }
+    .pill.phase2 { border-color: var(--phase2); color: #c4b5fd; }
+    section {
+      margin-bottom: 3rem;
+      scroll-margin-top: 1rem;
+    }
+    section h2 {
+      font-size: 1.5rem;
+      margin: 0 0 1rem;
+      padding-bottom: 0.5rem;
+      border-bottom: 2px solid var(--accent);
+    }
+    section h3 { font-size: 1.15rem; margin: 1.5rem 0 0.75rem; color: #cbd5e1; }
+    p { color: #cbd5e1; }
+    .phase-compare {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.25rem;
+      margin: 1.5rem 0;
+    }
+    @media (max-width: 700px) { .phase-compare { grid-template-columns: 1fr; } }
+    .phase-card {
+      border-radius: 12px;
+      padding: 1.25rem 1.5rem;
+      border: 1px solid var(--border);
+    }
+    .phase-card.p1 { background: linear-gradient(180deg, rgba(245,158,11,0.12) 0%, var(--surface) 100%); border-color: rgba(245,158,11,0.4); }
+    .phase-card.p2 { background: linear-gradient(180deg, rgba(139,92,246,0.12) 0%, var(--surface) 100%); border-color: rgba(139,92,246,0.4); }
+    .phase-card h3 { margin-top: 0; }
+    .phase-card .label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+    .phase-card.p1 .label { color: var(--phase1); }
+    .phase-card.p2 .label { color: var(--phase2); }
+    ul.check { list-style: none; padding: 0; margin: 0.75rem 0 0; }
+    ul.check li { padding: 0.25rem 0 0.25rem 1.5rem; position: relative; color: #cbd5e1; font-size: 0.95rem; }
+    ul.check li::before { content: "✓"; position: absolute; left: 0; color: var(--accent2); font-weight: bold; }
+    .roadmap {
+      position: relative;
+      padding-left: 1.5rem;
+      border-left: 3px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    .milestone {
+      position: relative;
+      margin-bottom: 1.75rem;
+      padding: 1rem 1.25rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .milestone::before {
+      content: "";
+      position: absolute;
+      left: -1.65rem;
+      top: 1.25rem;
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+    }
+    .milestone.ga::before { background: var(--accent2); }
+    .milestone.later::before { background: var(--phase2); }
+    .milestone .id { font-weight: 700; color: var(--accent); font-size: 0.85rem; }
+    .milestone .title { font-weight: 600; margin: 0.25rem 0; }
+    .milestone .scope, .milestone .exit { font-size: 0.9rem; color: var(--muted); margin: 0.35rem 0 0; }
+    .stack-visual {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 0.75rem;
+      margin: 1.25rem 0;
+    }
+    @media (max-width: 800px) { .stack-visual { grid-template-columns: repeat(2, 1fr); } }
+    .stack-layer {
+      text-align: center;
+      padding: 1rem 0.5rem;
+      background: var(--surface2);
+      border-radius: 10px;
+      border: 1px dashed var(--border);
+    }
+    .stack-layer strong { display: block; font-size: 0.85rem; }
+    .stack-layer span { font-size: 0.75rem; color: var(--muted); }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.88rem;
+      margin: 1rem 0;
+    }
+    th, td {
+      border: 1px solid var(--border);
+      padding: 0.6rem 0.75rem;
+      text-align: left;
+    }
+    th { background: var(--surface2); color: var(--text); font-weight: 600; }
+    td { background: var(--surface); color: #cbd5e1; }
+    .prio-p0 { color: #f87171; font-weight: 600; }
+    .prio-p1 { color: #fbbf24; }
+    .mermaid { background: var(--surface); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+    .flow-steps {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    .flow-step {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 0.75rem;
+      text-align: center;
+      font-size: 0.8rem;
+      border: 1px solid var(--border);
+    }
+    .flow-step .num {
+      display: inline-block;
+      width: 1.5rem;
+      height: 1.5rem;
+      line-height: 1.5rem;
+      border-radius: 50%;
+      background: var(--accent);
+      font-weight: 700;
+      font-size: 0.75rem;
+      margin-bottom: 0.35rem;
+    }
+    .callout {
+      background: rgba(59, 130, 246, 0.1);
+      border-left: 4px solid var(--accent);
+      padding: 1rem 1.25rem;
+      border-radius: 0 8px 8px 0;
+      margin: 1rem 0;
+      font-size: 0.95rem;
+    }
+    .callout.warn {
+      background: rgba(245, 158, 11, 0.1);
+      border-left-color: var(--phase1);
+    }
+    .print-hint, .gdoc-hint {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      margin-bottom: 2rem;
+      font-size: 0.9rem;
+    }
+    .gdoc-hint a { color: #93c5fd; }
+    @media print {
+      body { background: #fff; color: #111; }
+      nav.sidebar { display: none; }
+      .layout { display: block; }
+      main { padding: 0; max-width: none; }
+      .hero, .phase-card, .milestone, th, td { background: #f8fafc !important; color: #111 !important; border-color: #ccc !important; }
+      .print-hint, .gdoc-hint { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <nav class="sidebar">
+      <h2>SuperVoice PRD</h2>
+      <a href="#overview">Overview</a>
+      <a href="#phases">Phase 1 vs 2</a>
+      <a href="#roadmap">Release roadmap</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#product-pillars">Product pillars</a>
+      <a href="#use-cases">Use cases</a>
+      <a href="#journeys">User journeys</a>
+      <a href="#benchmark">Market features</a>
+      <a href="#requirements">Requirements (summary)</a>
+      <a href="#metrics">Success metrics</a>
+      <a href="#risks">Risks</a>
+      <a href="#gdoc">Google Docs</a>
+    </nav>
+
+    <main>
+      <div class="gdoc-hint" id="gdoc">
+        <strong>Share with colleagues:</strong> Open this file in any browser (double-click <code>PRD-V1-visual.html</code>).
+        For <strong>Google Docs</strong>, use the companion file <code>PRD-V1.docx</code> in the same folder → upload to Google Drive → Open with Google Docs.
+        Or: <strong>File → Print → Save as PDF</strong> from this page for a slide-ready PDF.
+      </div>
+
+      <header class="hero" id="overview">
+        <h1>SuperVoice</h1>
+        <p class="tagline">AI voice agent platform for Indian real estate SMBs — prepaid wallet, custom prompts, inbound & outbound calls, swappable telephony / STT / LLM / TTS.</p>
+        <div class="meta-grid">
+          <span class="pill">PRD v1.3</span>
+          <span class="pill phase1">Phase 1: India</span>
+          <span class="pill phase2">Phase 2: Global</span>
+          <span class="pill">Pipecat + adapters</span>
+          <span class="pill">Knowlarity + Plivo</span>
+          <span class="pill">INR prepaid wallet</span>
+        </div>
+      </header>
+
+      <section id="phases">
+        <h2>Phase-wise strategy</h2>
+        <p>One platform core. Phase 1 optimizes for India; Phase 2 adds regions and compliance packs without forking the product.</p>
+
+        <div class="phase-compare">
+          <div class="phase-card p1">
+            <div class="label">Phase 1 — Now (V1)</div>
+            <h3>India · Real estate SMB</h3>
+            <ul class="check">
+              <li>INR wallet — recharge before use (UPI, cards)</li>
+              <li>Inbound + outbound AI agents</li>
+              <li>Agent studio with custom prompts</li>
+              <li>Default telephony: Knowlarity (Gupshup)</li>
+              <li>Alternate: Plivo</li>
+              <li>NDNC / DND, IST calling windows, GST receipts</li>
+              <li>English first; Hindi on roadmap</li>
+              <li>Two-way human calling — RM-enabled only</li>
+            </ul>
+          </div>
+          <div class="phase-card p2">
+            <div class="label">Phase 2 — Later</div>
+            <h3>Global · More verticals</h3>
+            <ul class="check">
+              <li>Multi-currency wallet</li>
+              <li>US / UK / ME and local DIDs</li>
+              <li>Compliance packs (e.g. TCPA, GDPR)</li>
+              <li>Regional telephony defaults (e.g. Plivo)</li>
+              <li>More industries beyond real estate</li>
+              <li>Additional languages & locales</li>
+            </ul>
+          </div>
+        </div>
+
+        <table>
+          <thead>
+            <tr><th>Dimension</th><th>Phase 1 (V1)</th><th>Phase 2</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Customers</td><td>India-based SMBs</td><td>International SMBs</td></tr>
+            <tr><td>Currency</td><td>INR only</td><td>Multi-currency</td></tr>
+            <tr><td>Telephony default</td><td>Knowlarity</td><td>Per-country default</td></tr>
+            <tr><td>Compliance</td><td>TRAI / NDNC, recording disclosure</td><td>Market-specific packs</td></tr>
+            <tr><td>Vertical</td><td>Real estate</td><td>Real estate + new verticals</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="roadmap">
+        <h2>Release roadmap (milestones)</h2>
+        <p>Engineering and product phases from lab to GA. M5 is post-GA premium capability.</p>
+
+        <div class="roadmap">
+          <div class="milestone">
+            <div class="id">M0 — Foundation</div>
+            <div class="title">Voice pipeline + telephony adapter #1</div>
+            <p class="scope">Pipecat loop; Knowlarity <em>or</em> Plivo (eng picks order); one STT / LLM / TTS.</p>
+            <p class="exit">Exit: stable 10-min lab call on Indian number.</p>
+          </div>
+          <div class="milestone">
+            <div class="id">M0b — Telephony #2</div>
+            <div class="title">Second CPaaS adapter</div>
+            <p class="scope">Remaining provider (Plivo or Knowlarity).</p>
+            <p class="exit">Exit: same test suite passes on both.</p>
+          </div>
+          <div class="milestone">
+            <div class="id">M1 — Wallet + Agent studio</div>
+            <div class="title">Prepaid + prompt-based agents</div>
+            <p class="scope">Recharge, hard gate at ₹0, custom prompts, sandbox call.</p>
+            <p class="exit">Exit: cannot place calls without balance.</p>
+          </div>
+          <div class="milestone">
+            <div class="id">M2 — Inbound beta</div>
+            <div class="title">Live inbound for design partner</div>
+            <p class="scope">PSTN inbound, listing + buyer qual, transcripts, business hours.</p>
+            <p class="exit">Exit: 1 prepaid design partner live.</p>
+          </div>
+          <div class="milestone">
+            <div class="id">M3 — Outbound alpha</div>
+            <div class="title">Campaigns + compliance</div>
+            <p class="scope">Speed-to-lead, DNC, IST windows, wallet metering.</p>
+            <p class="exit">Exit: 100 calls; ledger reconciles.</p>
+          </div>
+          <div class="milestone ga">
+            <div class="id">M4 — V1 GA</div>
+            <div class="title">India real estate launch</div>
+            <p class="scope">Inbound + outbound, CRM/webhook, reporting, RM console.</p>
+            <p class="exit">Exit: 3 paying SMB teams; SLOs met 30 days.</p>
+          </div>
+          <div class="milestone">
+            <div class="id">M4b — API & webhooks</div>
+            <div class="title">Developer integrations</div>
+            <p class="scope">API keys, outbound API, webhooks, custom analysis fields.</p>
+            <p class="exit">Exit: partner integration on all_processing_completed.</p>
+          </div>
+          <div class="milestone later">
+            <div class="id">M5 — Two-way calling</div>
+            <div class="title">RM-gated human calling tool</div>
+            <p class="scope">Internal enablement only; audit trail; wallet metering.</p>
+            <p class="exit">Exit: 2–3 entitled tenant pilots.</p>
+          </div>
+        </div>
+
+        <div class="mermaid">
+flowchart LR
+  subgraph P1["Phase 1 — India V1"]
+    M0[M0 Foundation] --> M0b[M0b 2nd CPaaS]
+    M0b --> M1[M1 Wallet + Studio]
+    M1 --> M2[M2 Inbound]
+    M2 --> M3[M3 Outbound]
+    M3 --> M4[M4 GA]
+    M4 --> M5[M5 Two-way]
+  end
+  subgraph P2["Phase 2 — Global"]
+    G[Multi-currency + regions]
+  end
+  M4 -.-> G
+        </div>
+      </section>
+
+      <section id="architecture">
+        <h2>Architecture (high level)</h2>
+        <p>Four swappable layers — telephony, STT, LLM, TTS — orchestrated by Pipecat. Business logic stays in SuperVoice services.</p>
+
+        <div class="stack-visual">
+          <div class="stack-layer"><strong>Telephony</strong><span>Knowlarity · Plivo</span></div>
+          <div class="stack-layer"><strong>STT</strong><span>Adapter catalog</span></div>
+          <div class="stack-layer"><strong>LLM</strong><span>Adapter catalog</span></div>
+          <div class="stack-layer"><strong>TTS</strong><span>Adapter catalog</span></div>
+        </div>
+
+        <div class="mermaid">
+flowchart TB
+  subgraph CPaaS["Cloud telephony"]
+    K[Knowlarity Gupshup]
+    P[Plivo]
+  end
+  subgraph SV["SuperVoice"]
+    TA[Telephony adapter]
+    PC[Pipecat pipeline]
+    STT[STT]
+    LLM[LLM]
+    TTS[TTS]
+    WAL[Wallet]
+    STU[Agent studio]
+  end
+  K --> TA
+  P --> TA
+  TA <--> PC
+  PC --> STT --> LLM --> TTS --> PC
+  STU --> PC
+  PC --> WAL
+        </div>
+      </section>
+
+      <section id="product-pillars">
+        <h2>Product pillars</h2>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="num">1</div>Prepaid wallet<br/>Recharge → use</div>
+          <div class="flow-step"><div class="num">2</div>Agent studio<br/>Your prompt + templates</div>
+          <div class="flow-step"><div class="num">3</div>Inbound AI<br/>Answer & qualify</div>
+          <div class="flow-step"><div class="num">4</div>Outbound AI<br/>Campaigns + DNC</div>
+          <div class="flow-step"><div class="num">5</div>Vendor choice<br/>4 adapter layers</div>
+          <div class="flow-step"><div class="num">6</div>Two-way calls<br/>RM-only flag</div>
+        </div>
+        <div class="callout warn">
+          <strong>Two-way calling</strong> is not self-serve. Relationship managers enable <code>two_way_calling_enabled</code> in the internal ops console for selected customers only.
+        </div>
+      </section>
+
+      <section id="use-cases">
+        <h2>Use cases — Phase 1 real estate</h2>
+        <h3>Inbound</h3>
+        <table>
+          <thead><tr><th>ID</th><th>Use case</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>IN-1</td><td>Listing inquiry</td><td>KB answer → showing or callback</td></tr>
+            <tr><td>IN-2</td><td>Buyer qualification</td><td>Structured fields → hot lead routing</td></tr>
+            <tr><td>IN-3</td><td>Seller / valuation</td><td>Expectations → appointment</td></tr>
+            <tr><td>IN-4</td><td>Rental inquiry</td><td>Qualify → tour / link</td></tr>
+            <tr><td>IN-5</td><td>After-hours</td><td>Capture message → next-day callback</td></tr>
+            <tr><td>IN-6</td><td>Transfer to human</td><td>Warm transfer + summary</td></tr>
+          </tbody>
+        </table>
+        <h3>Outbound</h3>
+        <table>
+          <thead><tr><th>ID</th><th>Use case</th><th>Outcome</th></tr></thead>
+          <tbody>
+            <tr><td>OUT-1</td><td>Speed-to-lead</td><td>Qualify → book showing</td></tr>
+            <tr><td>OUT-2</td><td>Open house follow-up</td><td>Interest + next step</td></tr>
+            <tr><td>OUT-3</td><td>Nurture</td><td>Re-qualify → agent call</td></tr>
+            <tr><td>OUT-4</td><td>Appointment reminder</td><td>Confirm / reschedule</td></tr>
+            <tr><td>OUT-5</td><td>Listing update</td><td>Inform → gauge interest</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="journeys">
+        <h2>Customer journey (admin)</h2>
+        <div class="flow-steps">
+          <div class="flow-step"><div class="num">1</div>Sign up<br/>Wallet = ₹0</div>
+          <div class="flow-step"><div class="num">2</div>Recharge<br/>UPI / card</div>
+          <div class="flow-step"><div class="num">3</div>Build agent<br/>Prompt + KB</div>
+          <div class="flow-step"><div class="num">4</div>Attach number<br/>Knowlarity default</div>
+          <div class="flow-step"><div class="num">5</div>Go live<br/>Metered usage</div>
+          <div class="flow-step"><div class="num">6</div>Monitor<br/>Transcripts + wallet</div>
+        </div>
+      </section>
+
+      <section id="benchmark">
+        <h2>Features adopted from market (e.g. Ringg AI)</h2>
+        <p>Benchmarked from public docs — merged into PRD v1.3. SuperVoice keeps <strong>prepaid wallet</strong>, <strong>4-layer adapters</strong>, and <strong>India-first</strong> compliance.</p>
+        <table>
+          <thead><tr><th>Feature</th><th>V1</th><th>Later</th></tr></thead>
+          <tbody>
+            <tr><td>Custom prompt variables (CSV → prompt)</td><td>✓</td><td></td></tr>
+            <tr><td>Test call + test analysis</td><td>✓</td><td></td></tr>
+            <tr><td>Call caps, silence, VM detect, noise filter</td><td>✓</td><td>VM retry</td></tr>
+            <tr><td>History: recording + status/sub-status</td><td>✓</td><td></td></tr>
+            <tr><td>Platform + custom post-call extraction</td><td>✓</td><td></td></tr>
+            <tr><td>Analytics + wallet spend</td><td>✓</td><td></td></tr>
+            <tr><td>API keys, outbound API, webhooks</td><td></td><td>M4b</td></tr>
+            <tr><td>Webcall / site embed</td><td></td><td>M6</td></tr>
+            <tr><td>WhatsApp / multi-channel</td><td></td><td>Phase 2</td></tr>
+          </tbody>
+        </table>
+        <div class="callout">Full requirement IDs: <code>FR-CB*</code>, <code>FR-P*</code>, <code>FR-D*</code>, <code>FR-WS*</code> in <code>PRD-V1.md</code> §8.</div>
+      </section>
+
+      <section id="requirements">
+        <h2>Requirements snapshot</h2>
+        <p>Full detail in <code>PRD-V1.md</code>. Priority legend: <span class="prio-p0">P0</span> launch-critical, <span class="prio-p1">P1</span> soon after.</p>
+        <table>
+          <thead><tr><th>Area</th><th>Key P0 items</th></tr></thead>
+          <tbody>
+            <tr><td>Platform</td><td>Pipecat sessions, 4-layer adapters, barge-in, transcripts, multi-tenant</td></tr>
+            <tr><td>Telephony</td><td>Knowlarity + Plivo; IN default Knowlarity; record / transfer</td></tr>
+            <tr><td>Wallet</td><td>INR ledger, recharge, hard gate, metering</td></tr>
+            <tr><td>Agent studio</td><td>Custom prompts, RE templates, guardrails, knowledge</td></tr>
+            <tr><td>Outbound</td><td>CSV/API leads, DNC, IST windows, attempt caps</td></tr>
+            <tr><td>Two-way</td><td>RM-only flag + audit (M5)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="metrics">
+        <h2>Success metrics (pilot)</h2>
+        <table>
+          <thead><tr><th></th><th>Inbound</th><th>Outbound</th></tr></thead>
+          <tbody>
+            <tr><td>Completion</td><td>% not abandoned in 30s</td><td>% connected conversations</td></tr>
+            <tr><td>Resolution</td><td>Resolved or clean transfer</td><td>% qualified / appointment</td></tr>
+            <tr><td>Speed</td><td>Ring → first speech</td><td>Lead → first dial</td></tr>
+            <tr><td>Business</td><td colspan="2">3 paying SMB teams; wallet reconciliation clean</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section id="risks">
+        <h2>Top risks</h2>
+        <table>
+          <thead><tr><th>Risk</th><th>Mitigation</th></tr></thead>
+          <tbody>
+            <tr><td>Voice latency</td><td>Streaming STT/TTS; shorter replies</td></tr>
+            <tr><td>Wrong property facts</td><td>RAG-only facts; escalate to human</td></tr>
+            <tr><td>NDNC / DND breach</td><td>Scrubbing, opt-out, legal review</td></tr>
+            <tr><td>Wallet leakage</td><td>Sync debit; idempotent events</td></tr>
+            <tr><td>Knowlarity streaming API</td><td>Validate in M0 (OQ-1)</td></tr>
+          </tbody>
+        </table>
+      </section>
+
+      <p style="color: var(--muted); font-size: 0.85rem; margin-top: 3rem;">
+        Source: docs/PRD-V1.md v1.2 · SuperVoice · For internal review
+      </p>
+    </main>
+  </div>
+  <script>
+    mermaid.initialize({ startOnLoad: true, theme: "dark", securityLevel: "loose" });
+  </script>
+</body>
+</html>
